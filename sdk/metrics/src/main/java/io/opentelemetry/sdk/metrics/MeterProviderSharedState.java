@@ -20,15 +20,23 @@ import com.google.auto.value.AutoValue;
 import io.opentelemetry.sdk.common.Clock;
 import io.opentelemetry.sdk.resources.Resource;
 import javax.annotation.concurrent.Immutable;
+import java.util.HashSet;
+import java.util.Set;
 
 @AutoValue
 @Immutable
 abstract class MeterProviderSharedState {
   static MeterProviderSharedState create(Clock clock, Resource resource) {
-    return new AutoValue_MeterProviderSharedState(clock, resource);
+    return new AutoValue_MeterProviderSharedState(clock, resource, new HashSet<>());
+  }
+
+  static MeterProviderSharedState create(Clock clock, Resource resource, Set<String> stickyLabelsPrefixes) {
+    return new AutoValue_MeterProviderSharedState(clock, resource, stickyLabelsPrefixes);
   }
 
   abstract Clock getClock();
 
   abstract Resource getResource();
+
+  abstract Set<String> stickyLabelsPrefixes();
 }

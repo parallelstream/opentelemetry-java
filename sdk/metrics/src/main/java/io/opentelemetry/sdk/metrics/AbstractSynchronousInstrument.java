@@ -16,11 +16,15 @@
 
 package io.opentelemetry.sdk.metrics;
 
+import io.grpc.Context;
 import io.opentelemetry.common.Labels;
+import io.opentelemetry.correlationcontext.CorrelationContext;
+import io.opentelemetry.correlationcontext.CorrelationsContextUtils;
 import io.opentelemetry.sdk.metrics.data.MetricData;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -29,18 +33,32 @@ abstract class AbstractSynchronousInstrument<B extends AbstractBoundInstrument>
   private final ConcurrentHashMap<Labels, B> boundLabels;
   private final ReentrantLock collectLock;
 
+  private final Set<String> stickyLabelsPrefixes;
+
   AbstractSynchronousInstrument(
       InstrumentDescriptor descriptor,
       MeterProviderSharedState meterProviderSharedState,
       MeterSharedState meterSharedState,
       ActiveBatcher activeBatcher) {
     super(descriptor, meterProviderSharedState, meterSharedState, activeBatcher);
+    this.stickyLabelsPrefixes = this.getMeterProviderSharedState().stickyLabelsPrefixes();
     boundLabels = new ConcurrentHashMap<>();
     collectLock = new ReentrantLock();
   }
 
+  private Labels combineWithSticky(Labels labels) {
+    if (stickyLabelsPrefixes.isEmpty())
+      return labels;
+    Labels.Builder builder = labels.toBuilder();
+    CorrelationContext ctx = CorrelationsContextUtils.getCorrelationContext(Context.current());
+    ctx.getEntries().stream().filter(e -> stickyLabelsPrefixes.contains(e.getKey().substring(0, e.getKey().indexOf('.'))))
+        .forEach(e -> builder.setLabel(e.getKey(), e.getValue()));
+    return builder.build();
+  }
+
   public B bind(Labels labels) {
     Objects.requireNonNull(labels, "labels");
+    labels = combineWithSticky(labels);
     B binding = boundLabels.get(labels);
     if (binding != null && binding.bind()) {
       // At this moment it is guaranteed that the Bound is in the map and will not be removed.
@@ -90,4 +108,24 @@ abstract class AbstractSynchronousInstrument<B extends AbstractBoundInstrument>
   }
 
   abstract B newBinding(Batcher batcher);
+
+  abstract static class Builder<B extends AbstractSynchronousInstrument.Builder<?>> extends
+      AbstractInstrument.Builder<B> {
+
+
+    private final Set<String> stickyLabelsPrefixes;
+
+    public Set<String> getStickyLabelsPrefixes() {
+      return stickyLabelsPrefixes;
+    }
+
+    Builder(String name, MeterProviderSharedState meterProviderSharedState,
+        MeterSharedState meterSharedState, MeterSdk meterSdk,
+        Set<String> stickyLabelsPrefixes) {
+      super(name, meterProviderSharedState, meterSharedState, meterSdk);
+      this.stickyLabelsPrefixes = stickyLabelsPrefixes;
+    }
+
+
+  }
 }

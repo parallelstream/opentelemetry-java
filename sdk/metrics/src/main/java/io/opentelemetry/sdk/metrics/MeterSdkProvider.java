@@ -16,6 +16,7 @@
 
 package io.opentelemetry.sdk.metrics;
 
+import com.google.common.collect.ImmutableSet;
 import io.opentelemetry.metrics.MeterProvider;
 import io.opentelemetry.sdk.common.Clock;
 import io.opentelemetry.sdk.common.InstrumentationLibraryInfo;
@@ -27,8 +28,10 @@ import io.opentelemetry.sdk.resources.Resource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import javax.annotation.Nonnull;
 
 /**
@@ -42,10 +45,10 @@ public final class MeterSdkProvider implements MeterProvider {
   private final MeterSdkComponentRegistry registry;
   private final MetricProducer metricProducer;
 
-  private MeterSdkProvider(Clock clock, Resource resource) {
+  private MeterSdkProvider(Clock clock, Resource resource, Set<String> stickyLabelsPrefixes) {
     this.registry =
         new MeterSdkComponentRegistry(
-            MeterProviderSharedState.create(clock, resource), new ViewRegistry());
+            MeterProviderSharedState.create(clock, resource, stickyLabelsPrefixes), new ViewRegistry());
     this.metricProducer = new MetricProducerSdk(this.registry);
   }
 
@@ -92,6 +95,7 @@ public final class MeterSdkProvider implements MeterProvider {
 
     private Clock clock = MillisClock.getInstance();
     private Resource resource = Resource.getDefault();
+    private Set<String> stickyLabelsPrefixes = new HashSet<>();
 
     private Builder() {}
 
@@ -119,13 +123,18 @@ public final class MeterSdkProvider implements MeterProvider {
       return this;
     }
 
+    public Builder setStickyLabelsPrefixes(Set<String> stickyLabelsPrefixes) {
+      this.stickyLabelsPrefixes = ImmutableSet.copyOf(stickyLabelsPrefixes);
+      return this;
+    }
+
     /**
      * Create a new TracerSdkFactory instance.
      *
      * @return An initialized TracerSdkFactory.
      */
     public MeterSdkProvider build() {
-      return new MeterSdkProvider(clock, resource);
+      return new MeterSdkProvider(clock, resource, stickyLabelsPrefixes);
     }
   }
 
