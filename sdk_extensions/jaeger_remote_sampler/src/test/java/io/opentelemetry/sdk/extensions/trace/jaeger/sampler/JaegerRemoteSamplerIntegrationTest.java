@@ -12,15 +12,13 @@ import static org.awaitility.Awaitility.await;
 import io.grpc.ManagedChannelBuilder;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
-@EnabledIfSystemProperty(named = "enable.docker.tests", matches = "true")
+@Testcontainers(disabledWithoutDocker = true)
 class JaegerRemoteSamplerIntegrationTest {
 
   private static final int QUERY_PORT = 16686;
@@ -43,7 +41,7 @@ class JaegerRemoteSamplerIntegrationTest {
     String jaegerHost =
         String.format("127.0.0.1:%d", jaegerContainer.getMappedPort(COLLECTOR_PORT));
     final JaegerRemoteSampler remoteSampler =
-        JaegerRemoteSampler.newBuilder()
+        JaegerRemoteSampler.builder()
             .setChannel(ManagedChannelBuilder.forTarget(jaegerHost).usePlaintext().build())
             .setServiceName(SERVICE_NAME)
             .build();
@@ -60,7 +58,7 @@ class JaegerRemoteSamplerIntegrationTest {
     String jaegerHost =
         String.format("127.0.0.1:%d", jaegerContainer.getMappedPort(COLLECTOR_PORT));
     final JaegerRemoteSampler remoteSampler =
-        JaegerRemoteSampler.newBuilder()
+        JaegerRemoteSampler.builder()
             .setChannel(ManagedChannelBuilder.forTarget(jaegerHost).usePlaintext().build())
             .setServiceName(SERVICE_NAME_RATE_LIMITING)
             .build();

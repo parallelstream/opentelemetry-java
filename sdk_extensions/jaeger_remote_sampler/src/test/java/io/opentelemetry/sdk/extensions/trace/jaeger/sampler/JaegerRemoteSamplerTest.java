@@ -90,7 +90,7 @@ class JaegerRemoteSamplerTest {
         ArgumentCaptor.forClass(Sampling.SamplingStrategyParameters.class);
 
     JaegerRemoteSampler sampler =
-        JaegerRemoteSampler.newBuilder()
+        JaegerRemoteSampler.builder()
             .setChannel(inProcessChannel)
             .setServiceName(SERVICE_NAME)
             .build();
@@ -108,12 +108,12 @@ class JaegerRemoteSamplerTest {
   @Test
   void description() {
     JaegerRemoteSampler sampler =
-        JaegerRemoteSampler.newBuilder()
+        JaegerRemoteSampler.builder()
             .setChannel(inProcessChannel)
             .setServiceName(SERVICE_NAME)
             .build();
     assertThat(sampler.getDescription())
-        .matches("JaegerRemoteSampler\\{TraceIdRatioBased\\{ratio=0.001, idUpperBound=.*\\}\\}");
+        .isEqualTo("JaegerRemoteSampler{TraceIdRatioBased{0.001000}}");
 
     // wait until the sampling strategy is retrieved before exiting test method
     await().atMost(10, TimeUnit.SECONDS).until(samplerIsType(sampler, RateLimitingSampler.class));

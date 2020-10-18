@@ -12,16 +12,15 @@ import io.opentelemetry.context.Scope;
 import org.junit.jupiter.api.Test;
 
 class TracingContextUtilsTest {
-
   @Test
   void testGetCurrentSpan_Default() {
     Span span = TracingContextUtils.getCurrentSpan();
-    assertThat(span).isSameAs(DefaultSpan.getInvalid());
+    assertThat(span).isSameAs(Span.getInvalid());
   }
 
   @Test
   void testGetCurrentSpan_SetSpan() {
-    Span span = DefaultSpan.create(SpanContext.getInvalid());
+    Span span = Span.wrap(SpanContext.getInvalid());
     try (Scope ignored = TracingContextUtils.withSpan(span, Context.current()).makeCurrent()) {
       assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(span);
     }
@@ -30,12 +29,12 @@ class TracingContextUtilsTest {
   @Test
   void testGetSpan_DefaultContext() {
     Span span = TracingContextUtils.getSpan(Context.current());
-    assertThat(span).isSameAs(DefaultSpan.getInvalid());
+    assertThat(span).isSameAs(Span.getInvalid());
   }
 
   @Test
   void testGetSpan_ExplicitContext() {
-    Span span = DefaultSpan.create(SpanContext.getInvalid());
+    Span span = Span.wrap(SpanContext.getInvalid());
     Context context = TracingContextUtils.withSpan(span, Context.current());
     assertThat(TracingContextUtils.getSpan(context)).isSameAs(span);
   }
@@ -48,8 +47,23 @@ class TracingContextUtilsTest {
 
   @Test
   void testGetSpanWithoutDefault_ExplicitContext() {
-    Span span = DefaultSpan.create(SpanContext.getInvalid());
+    Span span = Span.wrap(SpanContext.getInvalid());
     Context context = TracingContextUtils.withSpan(span, Context.current());
     assertThat(TracingContextUtils.getSpanWithoutDefault(context)).isSameAs(span);
+  }
+
+  @Test
+  void testInProcessContext() {
+    Span span = Span.wrap(SpanContext.getInvalid());
+    try (Scope scope = TracingContextUtils.currentContextWith(span)) {
+      assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(span);
+      Span secondSpan = Span.wrap(SpanContext.getInvalid());
+      try (Scope secondScope = TracingContextUtils.currentContextWith(secondSpan)) {
+        assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(secondSpan);
+      } finally {
+        assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(span);
+      }
+    }
+    assertThat(TracingContextUtils.getCurrentSpan().getContext().isValid()).isFalse();
   }
 }

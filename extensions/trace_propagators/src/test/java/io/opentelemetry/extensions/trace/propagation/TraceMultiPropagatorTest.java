@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.SpanContext;
 import io.opentelemetry.trace.SpanId;
@@ -32,12 +31,13 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 class TraceMultiPropagatorTest {
-  private static final TextMapPropagator PROPAGATOR1 = B3Propagator.getSingleHeaderPropagator();
-  private static final TextMapPropagator PROPAGATOR2 = B3Propagator.getMultipleHeaderPropagator();
+  private static final TextMapPropagator PROPAGATOR1 = B3Propagator.getInstance();
+  private static final TextMapPropagator PROPAGATOR2 =
+      B3Propagator.builder().injectMultipleHeaders().build();
   private static final TextMapPropagator PROPAGATOR3 = HttpTraceContext.getInstance();
 
   private static final Span SPAN =
-      DefaultSpan.create(
+      Span.wrap(
           SpanContext.createFromRemoteParent(
               TraceId.fromLongs(1245, 67890),
               SpanId.fromLong(12345),

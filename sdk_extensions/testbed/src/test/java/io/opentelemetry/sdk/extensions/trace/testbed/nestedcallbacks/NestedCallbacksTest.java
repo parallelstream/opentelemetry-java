@@ -16,9 +16,9 @@ import io.opentelemetry.exporters.inmemory.InMemoryTracing;
 import io.opentelemetry.sdk.extensions.trace.testbed.TestUtils;
 import io.opentelemetry.sdk.trace.TracerSdkProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,24 +54,24 @@ public final class NestedCallbacksTest {
       assertThat(attrs.get(stringKey("key" + i))).isEqualTo(Integer.toString(i));
     }
 
-    assertThat(tracer.getCurrentSpan()).isSameAs(DefaultSpan.getInvalid());
+    assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(Span.getInvalid());
   }
 
   private void submitCallbacks(final Span span) {
 
     executor.submit(
         () -> {
-          try (Scope ignored = tracer.withSpan(span)) {
+          try (Scope ignored = TracingContextUtils.currentContextWith(span)) {
             span.setAttribute("key1", "1");
 
             executor.submit(
                 () -> {
-                  try (Scope ignored12 = tracer.withSpan(span)) {
+                  try (Scope ignored12 = TracingContextUtils.currentContextWith(span)) {
                     span.setAttribute("key2", "2");
 
                     executor.submit(
                         () -> {
-                          try (Scope ignored1 = tracer.withSpan(span)) {
+                          try (Scope ignored1 = TracingContextUtils.currentContextWith(span)) {
                             span.setAttribute("key3", "3");
                           } finally {
                             span.end();

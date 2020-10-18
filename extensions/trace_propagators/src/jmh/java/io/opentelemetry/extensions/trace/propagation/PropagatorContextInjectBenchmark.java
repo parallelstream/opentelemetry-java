@@ -7,7 +7,7 @@ package io.opentelemetry.extensions.trace.propagation;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.trace.DefaultSpan;
+import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.SpanContext;
 import io.opentelemetry.trace.TraceFlags;
 import io.opentelemetry.trace.TraceState;
@@ -62,8 +62,7 @@ public class PropagatorContextInjectBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     @Fork(1)
     public Map<String, String> measureInject() {
-      Context context =
-          TracingContextUtils.withSpan(DefaultSpan.create(contextToTest), Context.current());
+      Context context = TracingContextUtils.withSpan(Span.wrap(contextToTest), Context.current());
       doInject(context, carrier);
       return carrier;
     }
@@ -102,7 +101,7 @@ public class PropagatorContextInjectBenchmark {
   /** Benchmark for injecting trace context into a single B3 header. */
   public static class B3SingleHeaderContextInjectBenchmark extends AbstractContextInjectBenchmark {
 
-    private final B3Propagator b3Propagator = B3Propagator.getSingleHeaderPropagator();
+    private final B3Propagator b3Propagator = B3Propagator.getInstance();
     private final TextMapPropagator.Setter<Map<String, String>> setter =
         new TextMapPropagator.Setter<Map<String, String>>() {
           @Override
@@ -121,7 +120,8 @@ public class PropagatorContextInjectBenchmark {
   public static class B3MultipleHeaderContextInjectBenchmark
       extends AbstractContextInjectBenchmark {
 
-    private final B3Propagator b3Propagator = B3Propagator.getMultipleHeaderPropagator();
+    private final B3Propagator b3Propagator =
+        B3Propagator.builder().injectMultipleHeaders().build();
     private final TextMapPropagator.Setter<Map<String, String>> setter =
         new TextMapPropagator.Setter<Map<String, String>>() {
           @Override

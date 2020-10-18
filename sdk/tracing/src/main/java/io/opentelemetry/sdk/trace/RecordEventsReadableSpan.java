@@ -15,6 +15,7 @@ import io.opentelemetry.common.AttributeConsumer;
 import io.opentelemetry.common.AttributeKey;
 import io.opentelemetry.common.Attributes;
 import io.opentelemetry.common.ReadableAttributes;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.Clock;
 import io.opentelemetry.sdk.common.InstrumentationLibraryInfo;
 import io.opentelemetry.sdk.resources.Resource;
@@ -24,7 +25,7 @@ import io.opentelemetry.sdk.trace.data.SpanData.Event;
 import io.opentelemetry.trace.EndSpanOptions;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.SpanContext;
-import io.opentelemetry.trace.StatusCanonicalCode;
+import io.opentelemetry.trace.StatusCode;
 import io.opentelemetry.trace.Tracer;
 import io.opentelemetry.trace.attributes.SemanticAttributes;
 import java.io.PrintWriter;
@@ -34,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -59,12 +61,6 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
   private final List<SpanData.Link> links;
   // Number of links recorded.
   private final int totalRecordedLinks;
-
-  // Lock used to internally guard the mutable state of this instance
-  private final Object lock = new Object();
-
-  @GuardedBy("lock")
-  private String name;
   // The kind of the span.
   private final Kind kind;
   // The clock used to get the time.
@@ -75,6 +71,11 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
   private final InstrumentationLibraryInfo instrumentationLibraryInfo;
   // The start time of the span.
   private final long startEpochNanos;
+  // Lock used to internally guard the mutable state of this instance
+  private final Object lock = new Object();
+
+  @GuardedBy("lock")
+  private String name;
   // Set of recorded attributes. DO NOT CALL any other method that changes the ordering of events.
   @GuardedBy("lock")
   @Nullable
@@ -154,6 +155,7 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
       Kind kind,
       @Nullable String parentSpanId,
       boolean hasRemoteParent,
+      @Nonnull Context parentContext,
       TraceConfig traceConfig,
       SpanProcessor spanProcessor,
       Clock clock,
@@ -180,7 +182,7 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
             startEpochNanos == 0 ? clock.now() : startEpochNanos);
     // Call onStart here instead of calling in the constructor to make sure the span is completely
     // initialized.
-    spanProcessor.onStart(span);
+    spanProcessor.onStart(span, parentContext);
     return span;
   }
 
@@ -236,18 +238,6 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
   @Override
   public InstrumentationLibraryInfo getInstrumentationLibraryInfo() {
     return instrumentationLibraryInfo;
-  }
-
-  /**
-   * Returns the end nano time (see {@link System#nanoTime()}) or zero if the current {@code Span}
-   * is not ended.
-   *
-   * @return the end nano time.
-   */
-  long getEndEpochNanos() {
-    synchronized (lock) {
-      return endEpochNanos;
-    }
   }
 
   /**
@@ -363,7 +353,7 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
       return attributes;
     }
 
-    Attributes.Builder result = Attributes.newBuilder();
+    Attributes.Builder result = Attributes.builder();
     attributes.forEach(new LimitingAttributeConsumer(limit, result));
     return result.build();
   }
@@ -380,12 +370,12 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
   }
 
   @Override
-  public void setStatus(StatusCanonicalCode canonicalCode) {
+  public void setStatus(StatusCode canonicalCode) {
     setStatus(canonicalCode, null);
   }
 
   @Override
-  public void setStatus(StatusCanonicalCode canonicalCode, @Nullable String description) {
+  public void setStatus(StatusCode canonicalCode, @Nullable String description) {
     if (canonicalCode == null) {
       return;
     }
@@ -410,7 +400,7 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
     }
     long timestamp = clock.now();
 
-    Attributes.Builder attributes = Attributes.newBuilder();
+    Attributes.Builder attributes = Attributes.builder();
     attributes.setAttribute(
         SemanticAttributes.EXCEPTION_TYPE, exception.getClass().getCanonicalName());
     if (exception.getMessage() != null) {
@@ -474,7 +464,9 @@ final class RecordEventsReadableSpan implements ReadWriteSpan {
 
   @Override
   public boolean isRecording() {
-    return true;
+    synchronized (lock) {
+      return !hasEnded;
+    }
   }
 
   @GuardedBy("lock")

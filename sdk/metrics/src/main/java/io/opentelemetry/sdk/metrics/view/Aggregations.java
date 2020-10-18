@@ -226,9 +226,14 @@ public class Aggregations {
           return instrumentValueType == InstrumentValueType.LONG
               ? MetricData.Type.NON_MONOTONIC_LONG
               : MetricData.Type.NON_MONOTONIC_DOUBLE;
+        case VALUE_OBSERVER:
+          return instrumentValueType == InstrumentValueType.LONG
+              ? MetricData.Type.GAUGE_LONG
+              : MetricData.Type.GAUGE_DOUBLE;
         default:
           // Do not change this unless the limitations of the current LastValueAggregator are fixed.
-          throw new IllegalArgumentException("Unsupported instrument/value types");
+          throw new IllegalArgumentException(
+              "Unsupported instrument/value types: " + instrumentType + "/" + instrumentValueType);
       }
     }
 

@@ -10,9 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opentelemetry.exporters.inmemory.InMemoryTracing;
 import io.opentelemetry.sdk.trace.TracerSdkProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.trace.DefaultSpan;
+import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Span.Kind;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,6 @@ class ListenerTest {
     assertThat(finished).hasSize(1);
     assertThat(finished.get(0).getKind()).isEqualTo(Kind.CLIENT);
 
-    assertThat(tracer.getCurrentSpan()).isSameAs(DefaultSpan.getInvalid());
+    assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(Span.getInvalid());
   }
 }

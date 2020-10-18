@@ -6,6 +6,7 @@
 package io.opentelemetry.sdk.trace.export;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.common.export.ConfigBuilder;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
@@ -56,7 +57,7 @@ public final class SimpleSpanProcessor implements SpanProcessor {
   }
 
   @Override
-  public void onStart(ReadWriteSpan span) {
+  public void onStart(ReadWriteSpan span, Context parentContext) {
     // Do nothing.
   }
 
@@ -74,12 +75,9 @@ public final class SimpleSpanProcessor implements SpanProcessor {
       List<SpanData> spans = Collections.singletonList(span.toSpanData());
       final CompletableResultCode result = spanExporter.export(spans);
       result.whenComplete(
-          new Runnable() {
-            @Override
-            public void run() {
-              if (!result.isSuccess()) {
-                logger.log(Level.FINE, "Exporter failed");
-              }
+          () -> {
+            if (!result.isSuccess()) {
+              logger.log(Level.FINE, "Exporter failed");
             }
           });
     } catch (Exception e) {
@@ -113,7 +111,7 @@ public final class SimpleSpanProcessor implements SpanProcessor {
    * @return a new {@link SimpleSpanProcessor}.
    * @throws NullPointerException if the {@code spanExporter} is {@code null}.
    */
-  public static Builder newBuilder(SpanExporter spanExporter) {
+  public static Builder builder(SpanExporter spanExporter) {
     return new Builder(spanExporter);
   }
 

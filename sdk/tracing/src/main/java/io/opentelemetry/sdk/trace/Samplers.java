@@ -181,6 +181,11 @@ public final class Samplers {
     public String getDescription() {
       return "AlwaysOnSampler";
     }
+
+    @Override
+    public String toString() {
+      return getDescription();
+    }
   }
 
   @Immutable
@@ -202,6 +207,11 @@ public final class Samplers {
     @Override
     public String getDescription() {
       return "AlwaysOffSampler";
+    }
+
+    @Override
+    public String toString() {
+      return getDescription();
     }
   }
 
@@ -267,6 +277,11 @@ public final class Samplers {
           this.remoteParentNotSampled.getDescription(),
           this.localParentSampled.getDescription(),
           this.localParentNotSampled.getDescription());
+    }
+
+    @Override
+    public String toString() {
+      return getDescription();
     }
 
     static class Builder {
@@ -350,27 +365,19 @@ public final class Samplers {
 
       ParentBased that = (ParentBased) o;
 
-      if (root != null ? !root.equals(that.root) : that.root != null) {
+      if (!Objects.equals(root, that.root)) {
         return false;
       }
-      if (remoteParentSampled != null
-          ? !remoteParentSampled.equals(that.remoteParentSampled)
-          : that.remoteParentSampled != null) {
+      if (!Objects.equals(remoteParentSampled, that.remoteParentSampled)) {
         return false;
       }
-      if (remoteParentNotSampled != null
-          ? !remoteParentNotSampled.equals(that.remoteParentNotSampled)
-          : that.remoteParentNotSampled != null) {
+      if (!Objects.equals(remoteParentNotSampled, that.remoteParentNotSampled)) {
         return false;
       }
-      if (localParentSampled != null
-          ? !localParentSampled.equals(that.localParentSampled)
-          : that.localParentSampled != null) {
+      if (!Objects.equals(localParentSampled, that.localParentSampled)) {
         return false;
       }
-      return localParentNotSampled != null
-          ? localParentNotSampled.equals(that.localParentNotSampled)
-          : that.localParentNotSampled == null;
+      return Objects.equals(localParentNotSampled, that.localParentNotSampled);
     }
 
     @Override
@@ -382,22 +389,6 @@ public final class Samplers {
       result = 31 * result + (localParentSampled != null ? localParentSampled.hashCode() : 0);
       result = 31 * result + (localParentNotSampled != null ? localParentNotSampled.hashCode() : 0);
       return result;
-    }
-
-    @Override
-    public String toString() {
-      return "ParentBased{"
-          + "root="
-          + root
-          + ", remoteParentSampled="
-          + remoteParentSampled
-          + ", remoteParentNotSampled="
-          + remoteParentNotSampled
-          + ", localParentSampled="
-          + localParentSampled
-          + ", localParentNotSampled="
-          + localParentNotSampled
-          + '}';
     }
   }
 
@@ -468,6 +459,11 @@ public final class Samplers {
     @Override
     public final String getDescription() {
       return String.format("TraceIdRatioBased{%.6f}", getRatio());
+    }
+
+    @Override
+    public final String toString() {
+      return getDescription();
     }
   }
 

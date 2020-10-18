@@ -14,9 +14,9 @@ import io.opentelemetry.exporters.inmemory.InMemoryTracing;
 import io.opentelemetry.sdk.extensions.trace.testbed.TestUtils;
 import io.opentelemetry.sdk.trace.TracerSdkProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +41,7 @@ class MultipleCallbacksTest {
     Client client = new Client(tracer, parentDoneLatch);
 
     Span span = tracer.spanBuilder("parent").startSpan();
-    try (Scope scope = tracer.withSpan(span)) {
+    try (Scope scope = TracingContextUtils.currentContextWith(span)) {
       client.send("task1");
       client.send("task2");
       client.send("task3");
@@ -64,6 +64,6 @@ class MultipleCallbacksTest {
       assertThat(spans.get(i).getParentSpanId()).isEqualTo(parentSpan.getSpanId());
     }
 
-    assertThat(tracer.getCurrentSpan()).isSameAs(DefaultSpan.getInvalid());
+    assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(Span.getInvalid());
   }
 }

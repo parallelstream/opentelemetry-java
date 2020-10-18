@@ -61,12 +61,10 @@ class RateLimitingSampler implements Sampler {
       return Samplers.alwaysOn()
           .shouldSample(parentContext, traceId, name, spanKind, attributes, parentLinks);
     }
-    if (parentLinks != null) {
-      for (SpanData.Link parentLink : parentLinks) {
-        if (parentLink.getContext().isSampled()) {
-          return Samplers.alwaysOn()
-              .shouldSample(parentContext, traceId, name, spanKind, attributes, parentLinks);
-        }
+    for (SpanData.Link parentLink : parentLinks) {
+      if (parentLink.getContext().isSampled()) {
+        return Samplers.alwaysOn()
+            .shouldSample(parentContext, traceId, name, spanKind, attributes, parentLinks);
       }
     }
     return this.rateLimiter.checkCredit(1.0) ? onSamplingResult : offSamplingResult;
@@ -74,12 +72,12 @@ class RateLimitingSampler implements Sampler {
 
   @Override
   public String getDescription() {
-    return this.toString();
+    return String.format("RateLimitingSampler{%.2f}", maxTracesPerSecond);
   }
 
   @Override
   public String toString() {
-    return String.format("RateLimitingSampler{%.2f}", maxTracesPerSecond);
+    return getDescription();
   }
 
   @VisibleForTesting

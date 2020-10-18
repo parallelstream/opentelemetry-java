@@ -20,6 +20,7 @@ import io.opentelemetry.common.AttributeConsumer;
 import io.opentelemetry.common.AttributeKey;
 import io.opentelemetry.common.Attributes;
 import io.opentelemetry.common.ReadableAttributes;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.InstrumentationLibraryInfo;
 import io.opentelemetry.sdk.internal.TestClock;
 import io.opentelemetry.sdk.resources.Resource;
@@ -31,7 +32,7 @@ import io.opentelemetry.sdk.trace.data.SpanData.Status;
 import io.opentelemetry.trace.Span.Kind;
 import io.opentelemetry.trace.SpanContext;
 import io.opentelemetry.trace.SpanId;
-import io.opentelemetry.trace.StatusCanonicalCode;
+import io.opentelemetry.trace.StatusCode;
 import io.opentelemetry.trace.TraceFlags;
 import io.opentelemetry.trace.TraceState;
 import io.opentelemetry.trace.attributes.SemanticAttributes;
@@ -86,7 +87,7 @@ class RecordEventsReadableSpanTest {
     attributes.put(longKey("MyLongAttributeKey"), 123L);
     attributes.put(booleanKey("MyBooleanAttributeKey"), false);
     Attributes.Builder builder =
-        Attributes.newBuilder()
+        Attributes.builder()
             .setAttribute("MySingleStringAttributeKey", "MySingleStringAttributeValue");
     for (Map.Entry<AttributeKey, Object> entry : attributes.entrySet()) {
       builder.setAttribute(entry.getKey(), entry.getValue());
@@ -101,7 +102,7 @@ class RecordEventsReadableSpanTest {
     span.end();
     // Check that adding trace events or update fields after Span#end() does not throw any thrown
     // and are ignored.
-    spanDoWork(span, StatusCanonicalCode.ERROR, "CANCELLED");
+    spanDoWork(span, StatusCode.ERROR, "CANCELLED");
     SpanData spanData = span.toSpanData();
     verifySpanData(
         spanData,
@@ -145,17 +146,19 @@ class RecordEventsReadableSpanTest {
           Status.unset(),
           /*hasEnded=*/ false);
       assertThat(span.hasEnded()).isFalse();
+      assertThat(span.isRecording()).isTrue();
     } finally {
       span.end();
     }
     assertThat(span.hasEnded()).isTrue();
+    assertThat(span.isRecording()).isFalse();
   }
 
   @Test
   void toSpanData_EndedSpan() {
     RecordEventsReadableSpan span = createTestSpan(Kind.INTERNAL);
     try {
-      spanDoWork(span, StatusCanonicalCode.ERROR, "CANCELLED");
+      spanDoWork(span, StatusCode.ERROR, "CANCELLED");
     } finally {
       span.end();
     }
@@ -171,7 +174,7 @@ class RecordEventsReadableSpanTest {
         SPAN_NEW_NAME,
         START_EPOCH_NANOS,
         testClock.now(),
-        Status.create(StatusCanonicalCode.ERROR, "CANCELLED"),
+        Status.create(StatusCode.ERROR, "CANCELLED"),
         /*hasEnded=*/ true);
   }
 
@@ -257,14 +260,14 @@ class RecordEventsReadableSpanTest {
     try {
       testClock.advanceMillis(MILLIS_PER_SECOND);
       assertThat(span.toSpanData().getStatus()).isEqualTo(Status.unset());
-      span.setStatus(StatusCanonicalCode.ERROR, "CANCELLED");
+      span.setStatus(StatusCode.ERROR, "CANCELLED");
       assertThat(span.toSpanData().getStatus())
-          .isEqualTo(Status.create(StatusCanonicalCode.ERROR, "CANCELLED"));
+          .isEqualTo(Status.create(StatusCode.ERROR, "CANCELLED"));
     } finally {
       span.end();
     }
     assertThat(span.toSpanData().getStatus())
-        .isEqualTo(Status.create(StatusCanonicalCode.ERROR, "CANCELLED"));
+        .isEqualTo(Status.create(StatusCode.ERROR, "CANCELLED"));
   }
 
   @Test
@@ -609,7 +612,7 @@ class RecordEventsReadableSpanTest {
     assertThat(event.getEpochNanos()).isEqualTo(timestamp);
     assertThat(event.getAttributes())
         .isEqualTo(
-            Attributes.newBuilder()
+            Attributes.builder()
                 .setAttribute(SemanticAttributes.EXCEPTION_TYPE, "java.lang.IllegalStateException")
                 .setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, "there was an exception")
                 .setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, stacktrace)
@@ -672,7 +675,7 @@ class RecordEventsReadableSpanTest {
     assertThat(event.getEpochNanos()).isEqualTo(timestamp);
     assertThat(event.getAttributes())
         .isEqualTo(
-            Attributes.newBuilder()
+            Attributes.builder()
                 .setAttribute("key1", "this is an additional attribute")
                 .setAttribute("exception.type", "java.lang.IllegalStateException")
                 .setAttribute("exception.message", "this is a precedence attribute")
@@ -750,6 +753,7 @@ class RecordEventsReadableSpanTest {
             kind,
             parentSpanId,
             /* hasRemoteParent= */ true,
+            Context.root(),
             config,
             spanProcessor,
             testClock,
@@ -758,13 +762,13 @@ class RecordEventsReadableSpanTest {
             links,
             1,
             0);
-    Mockito.verify(spanProcessor, Mockito.times(1)).onStart(span);
+    Mockito.verify(spanProcessor, Mockito.times(1)).onStart(span, Context.root());
     return span;
   }
 
   private void spanDoWork(
       RecordEventsReadableSpan span,
-      @Nullable StatusCanonicalCode canonicalCode,
+      @Nullable StatusCode canonicalCode,
       @Nullable String descriptio) {
     span.setAttribute("MySingleStringAttributeKey", "MySingleStringAttributeValue");
     attributes.forEach(span::setAttribute);
@@ -842,6 +846,7 @@ class RecordEventsReadableSpanTest {
             kind,
             parentSpanId,
             /* hasRemoteParent= */ EXPECTED_HAS_REMOTE_PARENT,
+            Context.root(),
             traceConfig,
             spanProcessor,
             clock,

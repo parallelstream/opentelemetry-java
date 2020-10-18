@@ -15,7 +15,6 @@ import io.opentelemetry.sdk.trace.StressTestRunner.OperationUpdater;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.TracingContextUtils;
 import java.util.Collection;
@@ -51,41 +50,8 @@ class TracerSdkTest {
   }
 
   @Test
-  void defaultGetCurrentSpan() {
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-  }
-
-  @Test
   void defaultSpanBuilder() {
     assertThat(tracer.spanBuilder(SPAN_NAME)).isInstanceOf(SpanBuilderSdk.class);
-  }
-
-  @Test
-  void getCurrentSpan() {
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-    // Make sure context is detached even if test fails.
-    try (Scope ignored = TracingContextUtils.withSpan(span, Context.current()).makeCurrent()) {
-      assertThat(tracer.getCurrentSpan()).isSameAs(span);
-    }
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-  }
-
-  @Test
-  void withSpan_NullSpan() {
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-    try (Scope ignored = tracer.withSpan(null)) {
-      assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-    }
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-  }
-
-  @Test
-  void getCurrentSpan_WithSpan() {
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
-    try (Scope ignored = tracer.withSpan(span)) {
-      assertThat(tracer.getCurrentSpan()).isSameAs(span);
-    }
-    assertThat(tracer.getCurrentSpan()).isInstanceOf(DefaultSpan.class);
   }
 
   @Test
@@ -124,7 +90,7 @@ class TracerSdkTest {
   @Test
   void stressTest_withBatchSpanProcessor() {
     CountingSpanExporter countingSpanExporter = new CountingSpanExporter();
-    SpanProcessor spanProcessor = BatchSpanProcessor.newBuilder(countingSpanExporter).build();
+    SpanProcessor spanProcessor = BatchSpanProcessor.builder(countingSpanExporter).build();
     TracerSdkProvider tracerSdkProvider = TracerSdkProvider.builder().build();
     tracerSdkProvider.addSpanProcessor(spanProcessor);
     TracerSdk tracer =
@@ -153,7 +119,7 @@ class TracerSdkTest {
     private final AtomicLong numberOfSpansFinished = new AtomicLong();
 
     @Override
-    public void onStart(ReadWriteSpan span) {
+    public void onStart(ReadWriteSpan span, Context parentContext) {
       numberOfSpansStarted.incrementAndGet();
     }
 
@@ -195,7 +161,7 @@ class TracerSdkTest {
     @Override
     public void update() {
       Span span = tracer.spanBuilder("testSpan").startSpan();
-      try (Scope ignored = tracer.withSpan(span)) {
+      try (Scope ignored = TracingContextUtils.currentContextWith(span)) {
         span.setAttribute("testAttribute", "testValue");
       } finally {
         span.end();
@@ -205,7 +171,7 @@ class TracerSdkTest {
 
   private static class CountingSpanExporter implements SpanExporter {
 
-    public AtomicLong numberOfSpansExported = new AtomicLong();
+    public final AtomicLong numberOfSpansExported = new AtomicLong();
 
     @Override
     public CompletableResultCode export(Collection<SpanData> spans) {

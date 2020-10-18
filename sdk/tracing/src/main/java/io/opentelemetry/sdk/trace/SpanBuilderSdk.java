@@ -24,7 +24,6 @@ import io.opentelemetry.sdk.trace.Sampler.SamplingResult;
 import io.opentelemetry.sdk.trace.config.TraceConfig;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.SpanData.Link;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Span.Kind;
 import io.opentelemetry.trace.SpanContext;
@@ -39,6 +38,7 @@ import javax.annotation.Nullable;
 
 /** {@link SpanBuilderSdk} is SDK implementation of {@link Span.Builder}. */
 final class SpanBuilderSdk implements Span.Builder {
+
   private final String spanName;
   private final InstrumentationLibraryInfo instrumentationLibraryInfo;
   private final SpanProcessor spanProcessor;
@@ -179,14 +179,12 @@ final class SpanBuilderSdk implements Span.Builder {
     final SpanContext parentSpanContext = parentSpan.getContext();
     String traceId;
     String spanId = idsGenerator.generateSpanId();
-    TraceState traceState = TraceState.getDefault();
     if (!parentSpanContext.isValid()) {
       // New root span.
       traceId = idsGenerator.generateTraceId();
     } else {
       // New child span.
       traceId = parentSpanContext.getTraceIdAsHexString();
-      traceState = parentSpanContext.getTraceState();
     }
     List<SpanData.Link> immutableLinks =
         links == null ? Collections.emptyList() : Collections.unmodifiableList(links);
@@ -206,11 +204,14 @@ final class SpanBuilderSdk implements Span.Builder {
                 immutableLinks);
     Sampler.Decision samplingDecision = samplingResult.getDecision();
 
+    TraceState samplingResultTraceState =
+        samplingResult.getUpdatedTraceState(parentSpanContext.getTraceState());
     SpanContext spanContext =
-        createSpanContext(traceId, spanId, traceState, Samplers.isSampled(samplingDecision));
+        createSpanContext(
+            traceId, spanId, samplingResultTraceState, Samplers.isSampled(samplingDecision));
 
     if (!Samplers.isRecording(samplingDecision)) {
-      return DefaultSpan.create(spanContext);
+      return Span.wrap(spanContext);
     }
     ReadableAttributes samplingAttributes = samplingResult.getAttributes();
     if (!samplingAttributes.isEmpty()) {
@@ -238,6 +239,7 @@ final class SpanBuilderSdk implements Span.Builder {
         spanKind,
         parentSpanContext.getSpanIdAsHexString(),
         parentSpanContext.isRemote(),
+        parentContext,
         traceConfig,
         spanProcessor,
         getClock(parentSpan, clock),

@@ -11,11 +11,12 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.exporters.logging.LoggingSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.trace.TracerSdkProvider;
+import io.opentelemetry.sdk.trace.TracerSdkManagement;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.trace.Span;
-import io.opentelemetry.trace.Status;
+import io.opentelemetry.trace.StatusCanonicalCode;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -35,12 +36,12 @@ public class HttpClient {
       URLConnection::setRequestProperty;
 
   private static void initTracerSdk() {
-    // Get the tracer
-    TracerSdkProvider tracerProvider = OpenTelemetrySdk.getTracerProvider();
+    // Get the tracer management instance.
+    TracerSdkManagement tracerManagement = OpenTelemetrySdk.getTracerManagement();
     // Show that multiple exporters can be used
 
     // Set to export the traces also to a log file
-    tracerProvider.addSpanProcessor(SimpleSpanProcessor.newBuilder(loggingExporter).build());
+    tracerManagement.addSpanProcessor(SimpleSpanProcessor.newBuilder(loggingExporter).build());
   }
 
   private HttpClient() throws Exception {
@@ -55,7 +56,7 @@ public class HttpClient {
     // Name convention for the Span is not yet defined.
     // See: https://github.com/open-telemetry/opentelemetry-specification/issues/270
     Span span = tracer.spanBuilder("/").setSpanKind(Span.Kind.CLIENT).startSpan();
-    try (Scope scope = tracer.withSpan(span)) {
+    try (Scope scope = TracingContextUtils.currentContextWith(span)) {
       // TODO provide semantic convention attributes to Span.Builder
       span.setAttribute("component", "http");
       span.setAttribute("http.method", "GET");
@@ -83,11 +84,8 @@ public class HttpClient {
           content.append(inputLine);
         }
         in.close();
-        // Close the Span
-        span.setStatus(Status.OK);
       } catch (Exception e) {
-        // TODO create mapping for Http Error Codes <-> io.opentelemetry.trace.Status
-        span.setStatus(Status.UNKNOWN.withDescription("HTTP Code: " + status));
+        span.setStatus(StatusCanonicalCode.ERROR, "HTTP Code: " + status);
       }
     } finally {
       span.end();

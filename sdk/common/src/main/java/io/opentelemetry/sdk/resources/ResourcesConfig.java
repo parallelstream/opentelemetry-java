@@ -47,13 +47,12 @@ public abstract class ResourcesConfig {
    * Returns the default {@code ResourcesConfig}.
    *
    * @return the default {@code ResourcesConfig}.
-   * @since 0.9.0
    */
   public static ResourcesConfig getDefault() {
     return DEFAULT;
   }
 
-  private static final ResourcesConfig DEFAULT = ResourcesConfig.newBuilder().build();
+  private static final ResourcesConfig DEFAULT = ResourcesConfig.builder().build();
 
   /**
    * Returns the fully qualified class names of {@link ResourceProvider} implementations that are
@@ -69,7 +68,7 @@ public abstract class ResourcesConfig {
    *
    * @return a new {@link Builder}.
    */
-  public static Builder newBuilder() {
+  public static Builder builder() {
     return new AutoValue_ResourcesConfig.Builder().setDisabledResourceProviders(ImmutableSet.of());
   }
 

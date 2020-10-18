@@ -82,7 +82,6 @@ public final class IntervalMetricReader {
    * the environment. If a configuration value is missing, it uses the default value.
    *
    * @return a new {@link Builder} for {@link IntervalMetricReader}.
-   * @since 0.4.0
    */
   public static Builder builderFromDefaultSources() {
     return builder().readEnvironmentVariables().readSystemProperties();
@@ -195,14 +194,11 @@ public final class IntervalMetricReader {
           final CompletableResultCode result =
               internalState.getMetricExporter().export(Collections.unmodifiableList(metricsList));
           result.whenComplete(
-              new Runnable() {
-                @Override
-                public void run() {
-                  if (!result.isSuccess()) {
-                    logger.log(Level.FINE, "Exporter failed");
-                  }
-                  exportAvailable.set(true);
+              () -> {
+                if (!result.isSuccess()) {
+                  logger.log(Level.FINE, "Exporter failed");
                 }
+                exportAvailable.set(true);
               });
         } catch (Exception e) {
           logger.log(Level.WARNING, "Exporter threw an Exception", e);

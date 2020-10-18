@@ -8,6 +8,7 @@ package io.opentelemetry.sdk.trace.export;
 import com.google.common.annotations.VisibleForTesting;
 import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.common.Labels;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.internal.Utils;
 import io.opentelemetry.metrics.LongCounter;
 import io.opentelemetry.metrics.LongCounter.BoundLongCounter;
@@ -87,14 +88,14 @@ public final class BatchSpanProcessor implements SpanProcessor {
             scheduleDelayMillis,
             maxExportBatchSize,
             exporterTimeoutMillis,
-            new ArrayBlockingQueue<ReadableSpan>(maxQueueSize));
+            new ArrayBlockingQueue<>(maxQueueSize));
     Thread workerThread = new DaemonThreadFactory(WORKER_THREAD_NAME).newThread(worker);
     workerThread.start();
     this.sampled = sampled;
   }
 
   @Override
-  public void onStart(ReadWriteSpan span) {}
+  public void onStart(ReadWriteSpan span, Context parentContext) {}
 
   @Override
   public boolean isStartRequired() {
@@ -245,23 +246,17 @@ public final class BatchSpanProcessor implements SpanProcessor {
 
       final CompletableResultCode flushResult = forceFlush();
       flushResult.whenComplete(
-          new Runnable() {
-            @Override
-            public void run() {
-              continueWork = false;
-              final CompletableResultCode shutdownResult = spanExporter.shutdown();
-              shutdownResult.whenComplete(
-                  new Runnable() {
-                    @Override
-                    public void run() {
-                      if (!flushResult.isSuccess() || !shutdownResult.isSuccess()) {
-                        result.fail();
-                      } else {
-                        result.succeed();
-                      }
-                    }
-                  });
-            }
+          () -> {
+            continueWork = false;
+            final CompletableResultCode shutdownResult = spanExporter.shutdown();
+            shutdownResult.whenComplete(
+                () -> {
+                  if (!flushResult.isSuccess() || !shutdownResult.isSuccess()) {
+                    result.fail();
+                  } else {
+                    result.succeed();
+                  }
+                });
           });
 
       return result;
@@ -301,7 +296,7 @@ public final class BatchSpanProcessor implements SpanProcessor {
    * @return a new {@link BatchSpanProcessor}.
    * @throws NullPointerException if the {@code spanExporter} is {@code null}.
    */
-  public static Builder newBuilder(SpanExporter spanExporter) {
+  public static Builder builder(SpanExporter spanExporter) {
     return new Builder(spanExporter);
   }
 

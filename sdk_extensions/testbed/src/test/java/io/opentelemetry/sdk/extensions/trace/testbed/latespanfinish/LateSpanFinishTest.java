@@ -12,9 +12,9 @@ import io.opentelemetry.exporters.inmemory.InMemoryTracing;
 import io.opentelemetry.sdk.extensions.trace.testbed.TestUtils;
 import io.opentelemetry.sdk.trace.TracerSdkProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,7 +51,7 @@ public final class LateSpanFinishTest {
 
     TestUtils.assertSameTrace(spans);
 
-    assertThat(tracer.getCurrentSpan()).isSameAs(DefaultSpan.getInvalid());
+    assertThat(TracingContextUtils.getCurrentSpan()).isSameAs(Span.getInvalid());
   }
 
   /*
@@ -64,9 +64,9 @@ public final class LateSpanFinishTest {
         () -> {
           /* Alternative to calling activate() is to pass it manually to asChildOf() for each
            * created Span. */
-          try (Scope scope = tracer.withSpan(parentSpan)) {
+          try (Scope scope = TracingContextUtils.currentContextWith(parentSpan)) {
             Span childSpan = tracer.spanBuilder("task1").startSpan();
-            try (Scope childScope = tracer.withSpan(childSpan)) {
+            try (Scope childScope = TracingContextUtils.currentContextWith(childSpan)) {
               TestUtils.sleep(55);
             } finally {
               childSpan.end();
@@ -76,9 +76,9 @@ public final class LateSpanFinishTest {
 
     executor.submit(
         () -> {
-          try (Scope scope = tracer.withSpan(parentSpan)) {
+          try (Scope scope = TracingContextUtils.currentContextWith(parentSpan)) {
             Span childSpan = tracer.spanBuilder("task2").startSpan();
-            try (Scope childScope = tracer.withSpan(childSpan)) {
+            try (Scope childScope = TracingContextUtils.currentContextWith(childSpan)) {
               TestUtils.sleep(85);
             } finally {
               childSpan.end();
