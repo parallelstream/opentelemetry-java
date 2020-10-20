@@ -31,9 +31,8 @@ abstract class AbstractSynchronousInstrument<B extends AbstractBoundInstrument>
 
   public B bind(Labels labels) {
     Objects.requireNonNull(labels, "labels");
-    Labels processedLabels = labels;
     for (MetricsProcessor p : getMeterSharedState().getMetricsProcessors()) {
-      processedLabels = p.onLabelsBound(Context.current(), this.getDescriptor(), processedLabels);
+      labels = p.onLabelsBound(Context.current(), this, labels);
     }
     B binding = boundLabels.get(labels);
     if (binding != null && binding.bind()) {

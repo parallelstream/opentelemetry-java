@@ -82,7 +82,8 @@ public final class MeterSdkProvider implements MeterProvider {
 
     private Clock clock = MillisClock.getInstance();
     private Resource resource = Resource.getDefault();
-    private final MeterSharedState.Builder meterSharedStateBuilder = MeterSharedState.builder();
+    private final MeterSharedState.Builder meterSharedStateBuilder = MeterSharedState.builder()
+        .setInstrumentRegistry(new InstrumentRegistry());
 
     private Builder() {}
 
@@ -140,7 +141,8 @@ public final class MeterSdkProvider implements MeterProvider {
 
     @Override
     public MeterSdk newComponent(InstrumentationLibraryInfo instrumentationLibraryInfo) {
-      return new MeterSdk(meterProviderSharedState, meterSharedStateBuilder.build(), viewRegistry);
+      return new MeterSdk(meterProviderSharedState,
+          meterSharedStateBuilder.setInstrumentationLibraryInfo(instrumentationLibraryInfo).build(), viewRegistry);
     }
   }
 

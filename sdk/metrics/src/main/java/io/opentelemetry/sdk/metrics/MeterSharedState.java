@@ -8,8 +8,6 @@ package io.opentelemetry.sdk.metrics;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableSet;
 import io.opentelemetry.sdk.common.InstrumentationLibraryInfo;
-import io.opentelemetry.sdk.metrics.AutoValue_MeterSharedState.Builder;
-
 import javax.annotation.concurrent.Immutable;
 
 @AutoValue
