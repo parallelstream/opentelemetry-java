@@ -29,6 +29,7 @@ releaseTask.configure {
 
 subprojects {
     group = "io.opentelemetry"
+    version = "0.1-atlassian-2"
 
     plugins.withId("maven-publish") {
         // Always include the artifactory/bintray plugins to do the deployment.
@@ -44,6 +45,16 @@ subprojects {
         }
 
         publishing {
+            repositories {
+                maven {
+                    name "atlassian-3rdparty"
+                    url = 'https://packages.atlassian.com/maven/3rdparty'
+                    credentials {
+                        username maven_user
+                        password maven_password
+                    }
+                }
+            }
             publications {
                 mavenPublication(MavenPublication) {
                     version version
@@ -164,6 +175,11 @@ configure(opentelemetryProjects) {
     apply plugin: 'net.ltgt.errorprone'
 
     repositories {
+        maven {
+            name "maven-atlassian-com"
+            url = 'https://packages.atlassian.com/maven/repository/internal'
+        }
+
         mavenCentral()
         jcenter()
         mavenLocal()
