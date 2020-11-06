@@ -9,6 +9,7 @@ plugins {
 description = 'OpenTelemetry SDK Metrics'
 ext.moduleName = "io.opentelemetry.sdk.metrics"
 ext.propertiesDir = "build/generated/properties/io/opentelemetry/sdk/metrics"
+print("****" + project.version)
 
 dependencies {
     api project(':opentelemetry-api'),
